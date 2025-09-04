@@ -132,6 +132,10 @@ class TranslationBot:
                 # Translate the text
                 translation = await self.translator.translate(text)
                 
+                # Check if translation is empty or just whitespace
+                if not translation or not translation.strip():
+                    translation = "翻訳できませんでした / Translation failed"
+                
                 # Format text for logging
                 text_log = text.replace('\n', '\\n')
                 translation_log = translation.replace('\n', '\\n')

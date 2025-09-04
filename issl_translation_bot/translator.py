@@ -48,6 +48,7 @@ LANGUAGE DETECTION & TRANSLATION RULES:
 1. If the input contains ANY Japanese characters (ひらがな、カタカナ、漢字), translate to English
 2. If the input is entirely in Latin alphabet, translate to Japanese
 3. For mixed language text, translate the primary language to the other
+4. If text already contains both Japanese and English equally, respond with "翻訳不要 / Translation not needed"
 
 TRANSLATION GUIDELINES:
 - Translate naturally, preserving tone and context
@@ -60,8 +61,9 @@ Input: "Hello" → Output: "こんにちは"
 Input: "こんにちは" → Output: "Hello"  
 Input: "Deploy the API" → Output: "APIをデプロイする"
 Input: "APIをデプロイする" → Output: "Deploy the API"
+Input: "こんにちは Hello" → Output: "翻訳不要 / Translation not needed"
 
-Return ONLY the translated text (with optional ※ note)."""
+Return ONLY the translated text or "翻訳不要 / Translation not needed"."""
 
         try:
             response = await self.client.chat.completions.create(
