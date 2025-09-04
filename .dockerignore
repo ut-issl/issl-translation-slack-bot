@@ -11,7 +11,7 @@ venv/
 *.egg-info/
 
 # Environment
-.env
+# .env is copied explicitly in Dockerfile
 
 # Logs
 logs/
