@@ -29,8 +29,8 @@ def setup_logging():
 
 async def async_main():
     """Async main function"""
-    # Load environment variables
-    load_dotenv()
+    # Load environment variables (override existing ones)
+    load_dotenv(override=True)
     
     # Validate required environment variables
     required_vars = ["SLACK_BOT_TOKEN", "SLACK_APP_TOKEN", "OPENAI_API_KEY"]
