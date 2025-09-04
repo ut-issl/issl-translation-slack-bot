@@ -42,38 +42,92 @@ class TranslationBot:
                 ts = event["item"]["ts"]
                 user = event.get("user", "unknown")
                 
-                # Add processing reaction
-                await client.reactions_add(
-                    channel=channel,
-                    timestamp=ts,
-                    name=self.processing_emoji
-                )
+                # Note: item_user contains original message author if needed
                 
-                # Get the specific message by timestamp
-                result = await client.conversations_history(
-                    channel=channel,
-                    oldest=ts,
-                    latest=ts,
-                    limit=1,
-                    inclusive=True
-                )
+                # Add processing reaction (ignore if already exists)
+                try:
+                    await client.reactions_add(
+                        channel=channel,
+                        timestamp=ts,
+                        name=self.processing_emoji
+                    )
+                except Exception as e:
+                    if "already_reacted" not in str(e):
+                        logger.warning(f"Could not add processing reaction: {e}")
+                    # Continue processing regardless
                 
-                if not result["messages"] or result["messages"][0].get("ts") != ts:
-                    # Fallback: try to find the message in recent history
+                # Try to get message - check both main messages and thread replies
+                message = None
+                
+                # First try: main messages
+                try:
                     result = await client.conversations_history(
                         channel=channel,
-                        limit=100
+                        limit=50
                     )
                     messages = [msg for msg in result.get("messages", []) if msg.get("ts") == ts]
-                    if not messages:
-                        return
-                    message = messages[0]
-                else:
-                    message = result["messages"][0]
+                    if messages:
+                        message = messages[0]
+                except Exception as e:
+                    logger.warning(f"Main message search failed: {e}")
+                
+                # Second try: check if it's in a thread using conversations.replies directly
+                if not message:
+                    try:
+                        # Try conversations.replies - if ts is in any thread, this will return the full thread
+                        replies_result = await client.conversations_replies(
+                            channel=channel,
+                            ts=ts
+                        )
+                        
+                        # Find our specific message in the thread
+                        for reply in replies_result.get("messages", []):
+                            if reply.get("ts") == ts:
+                                message = reply
+                                break
+                            
+                    except Exception as e:
+                        logger.warning(f"conversations.replies failed: {e}")
+                
+                if not message:
+                    logger.warning(f"Message not found for ts={ts}, skipping")
+                    return
+                    
                 text = message.get("text", "")
                 
-                if not text:
+                # Collect text from attachments as well
+                attachments = message.get("attachments", [])
+                attachment_texts = []
+                if attachments:
+                    for attachment in attachments:
+                        # Get title and text from attachment
+                        title = attachment.get("title", "")
+                        att_text = attachment.get("text", "")
+                        fallback = attachment.get("fallback", "")
+                        
+                        if title:
+                            attachment_texts.append(title)
+                        if att_text:
+                            attachment_texts.append(att_text)
+                        elif fallback:
+                            attachment_texts.append(fallback)
+                
+                # Combine main text and attachment texts
+                all_texts = []
+                if text.strip():
+                    all_texts.append(text)
+                if attachment_texts:
+                    all_texts.extend(attachment_texts)
+                
+                if not all_texts:
+                    # Debug: check what type of message this is
+                    msg_type = message.get("type", "unknown")
+                    subtype = message.get("subtype", "none")
+                    logger.warning(f"No translatable text found - type: {msg_type}, subtype: {subtype}")
                     return
+                
+                # Join all text content
+                text = "\n".join(all_texts)
                 
                 # Translate the text
                 translation = await self.translator.translate(text)
@@ -92,22 +146,26 @@ class TranslationBot:
                 )
                 
                 # Remove processing reaction
-                await client.reactions_remove(
-                    channel=channel,
-                    timestamp=ts,
-                    name=self.processing_emoji
-                )
-                
-            except Exception as e:
-                logger.error(f"Error handling reaction: {e}")
                 try:
                     await client.reactions_remove(
                         channel=channel,
                         timestamp=ts,
                         name=self.processing_emoji
                     )
-                except:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Could not remove processing reaction: {e}")
+                
+            except Exception as e:
+                logger.error(f"Error handling reaction: {e}")
+                # Always try to remove processing reaction on error
+                try:
+                    await client.reactions_remove(
+                        channel=channel,
+                        timestamp=ts,
+                        name=self.processing_emoji
+                    )
+                except Exception as cleanup_error:
+                    logger.error(f"Failed to remove processing reaction: {cleanup_error}")
 
     async def start(self):
         """Start the bot"""
