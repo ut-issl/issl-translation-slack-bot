@@ -72,7 +72,7 @@ Return ONLY the translated text or "翻訳不要 / Translation not needed"."""
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": text}
                 ],
-                max_completion_tokens=1000
+                max_completion_tokens=5000
             )
             
             return response.choices[0].message.content.strip()
