@@ -1,0 +1,18 @@
+services:
+  issl-translation-bot:
+    build: .
+    container_name: issl-translation-bot
+    restart: unless-stopped
+    environment:
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+      - SLACK_APP_TOKEN=${SLACK_APP_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - TRANSLATION_EMOJI=${TRANSLATION_EMOJI:-english-japanese-translation}
+      - PROCESSING_EMOJI=${PROCESSING_EMOJI:-eyes}
+    volumes:
+      - ./logs:/app/logs
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
