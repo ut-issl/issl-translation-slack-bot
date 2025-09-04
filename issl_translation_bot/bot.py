@@ -49,18 +49,27 @@ class TranslationBot:
                     name=self.processing_emoji
                 )
                 
-                # Get the message content
+                # Get the specific message by timestamp
                 result = await client.conversations_history(
                     channel=channel,
+                    oldest=ts,
                     latest=ts,
                     limit=1,
                     inclusive=True
                 )
                 
-                if not result["messages"]:
-                    return
-                
-                message = result["messages"][0]
+                if not result["messages"] or result["messages"][0].get("ts") != ts:
+                    # Fallback: try to find the message in recent history
+                    result = await client.conversations_history(
+                        channel=channel,
+                        limit=100
+                    )
+                    messages = [msg for msg in result.get("messages", []) if msg.get("ts") == ts]
+                    if not messages:
+                        return
+                    message = messages[0]
+                else:
+                    message = result["messages"][0]
                 text = message.get("text", "")
                 
                 if not text:

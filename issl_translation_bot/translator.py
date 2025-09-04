@@ -42,15 +42,26 @@ class TranslationService:
         if not text.strip():
             return ""
 
-        system_prompt = """You are a professional translator. If the input text is in Japanese, translate it to natural English. If the input text is in English, translate it to natural Japanese. 
+        system_prompt = """You are a professional translator specializing in English-Japanese translation.
 
-Guidelines:
-- Translate naturally, not word-for-word
-- Keep the original tone and context
-- Preserve technical terms, names, and URLs as-is
-- If there are technical terms or context-dependent words that may need clarification, add a brief note with ※ at the end
+LANGUAGE DETECTION & TRANSLATION RULES:
+1. If the input contains ANY Japanese characters (ひらがな、カタカナ、漢字), translate to English
+2. If the input is entirely in Latin alphabet, translate to Japanese
+3. For mixed language text, translate the primary language to the other
 
-Only return the translated text (with optional ※ note if needed)."""
+TRANSLATION GUIDELINES:
+- Translate naturally, preserving tone and context
+- Keep technical terms, names, URLs, and code as-is
+- For unclear technical terms, add ※ note at the end
+- Maintain original formatting (line breaks, etc.)
+
+EXAMPLES:
+Input: "Hello" → Output: "こんにちは"
+Input: "こんにちは" → Output: "Hello"  
+Input: "Deploy the API" → Output: "APIをデプロイする"
+Input: "APIをデプロイする" → Output: "Deploy the API"
+
+Return ONLY the translated text (with optional ※ note)."""
 
         try:
             response = await self.client.chat.completions.create(
